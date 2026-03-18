@@ -2,7 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Dimensions } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { Bell, Camera, ChevronRight, Clock, Star, Users, Moon, Sun } from 'lucide-react-native';
+import { Bell, Camera, ChevronRight, Clock, Star, Users, Settings } from 'lucide-react-native';
+
+
 import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
@@ -22,7 +24,15 @@ const RECENTLY_COOKED = [
     time: '40 m',
     image: require('@/assets/images/pepperoni_pizza_1773798546792.png'),
   },
+  {
+    id: 'rec3',
+    title: 'Classic Carbonara',
+    subtitle: 'Rich • Authentic',
+    time: '20 m',
+    image: require('@/assets/images/carbonara_1773798653961.png'),
+  },
 ];
+
 
 const TRENDING_RECIPES = [
   {
@@ -56,7 +66,8 @@ const TRENDING_RECIPES = [
 ];
 
 export default function HomeScreen() {
-  const { colorScheme, toggleColorScheme } = useAppTheme();
+  const { colorScheme } = useAppTheme();
+
   const theme = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
@@ -70,14 +81,17 @@ export default function HomeScreen() {
             <Text style={[styles.headerSubtitle, { color: theme.muted }]}>Ready to cook?</Text>
           </View>
           <View style={styles.headerActions}>
+
             <TouchableOpacity 
               style={[styles.iconButton, { backgroundColor: theme.secondary, marginRight: 10 }]}
-              onPress={toggleColorScheme}
             >
-              {colorScheme === 'dark' ? <Sun size={20} color={theme.text} /> : <Moon size={20} color={theme.text} />}
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.iconButton, { backgroundColor: theme.secondary }]}>
               <Bell size={20} color={theme.text} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.iconButton, { backgroundColor: theme.secondary }]}
+              onPress={() => router.push('/settings')}
+            >
+              <Settings size={20} color={theme.text} />
             </TouchableOpacity>
           </View>
         </View>
