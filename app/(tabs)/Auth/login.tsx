@@ -16,6 +16,9 @@ import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Mail, Lock, ArrowRight, ChefHat, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { auth } from '@/lib/firebaseConfig';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -27,9 +30,18 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = () => {
-    // In a real app, you'd authenticate here
-    router.replace('/');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please enter both email and password');
+      return;
+    }
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.message);
+    }
   };
 
   return (

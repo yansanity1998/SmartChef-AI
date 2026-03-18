@@ -17,6 +17,9 @@ import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Mail, Lock, User, ArrowLeft, ArrowRight, ChefHat, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { auth } from '@/lib/firebaseConfig';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -29,9 +32,22 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleRegister = () => {
-    // In a real app, you'd register here
-    router.replace('/');
+  const handleRegister = async () => {
+    if (!email || !password || !fullName) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // Update the user's display name
+      await updateProfile(userCredential.user, {
+        displayName: fullName
+      });
+      router.replace('/');
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.message);
+    }
   };
 
   return (
