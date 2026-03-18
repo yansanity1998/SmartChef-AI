@@ -21,9 +21,14 @@ export default function TabLayout() {
           backgroundColor: theme.background,
           borderTopWidth: 1,
           borderTopColor: theme.border,
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+          height: Platform.OS === 'ios' ? 88 : 70,
+          paddingBottom: Platform.OS === 'ios' ? 30 : 12,
           paddingTop: 10,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
         },
       }}>
       <Tabs.Screen
@@ -45,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Scan',
           tabBarIcon: ({ color }) => (
-            <View style={[styles.scanButton, { backgroundColor: theme.tint }]}>
+            <View style={[styles.scanButton, { backgroundColor: '#FF9500' }]}>
               <Scan size={28} color="white" />
             </View>
           ),
@@ -100,16 +105,16 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   scanButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -25,
-    shadowColor: '#000',
+    marginTop: Platform.OS === 'ios' ? -35 : -25,
+    shadowColor: '#FF9500',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 10,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
 });
