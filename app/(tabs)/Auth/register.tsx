@@ -1,13 +1,13 @@
 import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { auth, db } from '@/lib/firebaseConfig';
+import { RegisterSchema } from '@/schemas/register.schema';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, ChefHat, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
-import Toast from 'react-native-toast-message';
 import {
     Dimensions,
     ImageBackground,
@@ -21,7 +21,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { RegisterSchema } from '@/schemas/register.schema';
+import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
 
@@ -37,7 +37,7 @@ export default function RegisterScreen() {
     const handleRegister = async () => {
         // 1. Validate against schema
         const validation = RegisterSchema.safeParse({ fullName, email, password });
-        
+
         if (!validation.success) {
             const firstError = validation.error.issues[0].message;
             Toast.show({
@@ -103,7 +103,7 @@ export default function RegisterScreen() {
                                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                                 style={styles.content}
                             >
-                                <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+                                <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/Auth/login')}>
                                     <ArrowLeft size={24} color="white" />
                                 </TouchableOpacity>
 
@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+        marginTop: 10,
         marginBottom: 20,
     },
     header: {

@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, SafeAreaView, Dimensions, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Bell, Camera, ChevronRight, Clock, Star, Users, Settings } from 'lucide-react-native';
-
-
 import { useRouter } from 'expo-router';
+import { auth, db } from '@/lib/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -67,9 +67,36 @@ const TRENDING_RECIPES = [
 
 export default function HomeScreen() {
   const { colorScheme } = useAppTheme();
-
   const theme = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const [userName, setUserName] = useState('Chef');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        // Initial fallback from auth profile
+        if (user.displayName) {
+          setUserName(user.displayName.split(' ')[0]);
+        }
+
+        // Fetch latest data from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const fullName = userDoc.data().fullName;
+            if (fullName) {
+              setUserName(fullName.split(' ')[0]);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -78,7 +105,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={[styles.appName, { color: theme.text }]}>SmartChef AI</Text>
-            <Text style={[styles.headerSubtitle, { color: theme.muted }]}>Ready to cook?</Text>
+            <Text style={[styles.headerSubtitle, { color: theme.muted }]}>Hi {userName}! Ready to cook?</Text>
           </View>
           <View style={styles.headerActions}>
 
@@ -98,7 +125,7 @@ export default function HomeScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={[styles.mainTitle, { color: theme.text }]}>What's in your kitchen today?</Text>
+          <Text style={[styles.mainTitle, { color: theme.text }]}>What's in your kitchen today, {userName}?</Text>
         </View>
 
         {/* Scan Button */}
