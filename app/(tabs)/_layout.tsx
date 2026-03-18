@@ -67,9 +67,15 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Hide existing explore screen if it exists */}
+      {/* Hide screens from tab bar */}
       <Tabs.Screen
         name="explore"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="Main/settings"
         options={{
           href: null,
         }}
