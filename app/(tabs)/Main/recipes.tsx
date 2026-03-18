@@ -1,48 +1,91 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Search, Filter, Clock, Flame } from 'lucide-react-native';
+import { Search, Filter, Clock, Flame, ChefHat } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
 
 const { width } = Dimensions.get('window');
+
+import { useAppTheme } from '@/hooks/use-app-theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 const ALL_RECIPES = [
   {
     id: '1',
     title: 'Rustic Tomato Bruschetta',
-    match: '95% Match',
+    ingredients: ['Tomato', 'Garlic', 'Basil', 'Olive Oil', 'Bread'],
     time: '15m',
     difficulty: 'Easy',
     calories: '180 kcal',
-    image: require('@/assets/images/mediterranean_salmon_1773798250272.png'), // Reusing for placeholder
+    image: require('@/assets/images/mediterranean_salmon_1773798250272.png'),
   },
   {
     id: '2',
     title: 'Roasted Garlic Tomato Soup',
-    match: '90% Match',
+    ingredients: ['Tomato', 'Garlic', 'Onion', 'Basil'],
     time: '40m',
     difficulty: 'Medium',
     calories: '240 kcal',
-    image: require('@/assets/images/carbonara_1773798653961.png'), // Reusing for placeholder
+    image: require('@/assets/images/carbonara_1773798653961.png'),
   },
   {
     id: '3',
     title: 'Classic Pasta Pomodoro',
-    match: '88% Match',
+    ingredients: ['Pasta', 'Tomato', 'Garlic', 'Basils', 'Parmesan'],
     time: '20m',
     difficulty: 'Easy',
     calories: '420 kcal',
-    image: require('@/assets/images/thai_green_curry_1773798632156.png'), // Reusing for placeholder
+    image: require('@/assets/images/thai_green_curry_1773798632156.png'),
   },
+  {
+    id: '4',
+    title: 'Lemon Herb Salmon',
+    ingredients: ['Salmon', 'Lemon', 'Garlic', 'Olive Oil'],
+    time: '25m',
+    difficulty: 'Easy',
+    calories: '320 kcal',
+    image: require('@/assets/images/mediterranean_salmon_1773798250272.png'),
+  },
+  {
+    id: '5',
+    title: 'Ginger Soy Shrimp',
+    ingredients: ['Shrimp', 'Ginger', 'Soy Sauce', 'Garlic'],
+    time: '15m',
+    difficulty: 'Medium',
+    calories: '210 kcal',
+    image: require('@/assets/images/thai_green_curry_1773798632156.png'),
+  }
 ];
-
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function RecipesScreen() {
   const { colorScheme } = useAppTheme();
   const theme = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const params = useLocalSearchParams<{ ingredients?: string }>();
+  const [recipes, setRecipes] = useState(ALL_RECIPES);
+  const [scanKeywords, setScanKeywords] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (params.ingredients) {
+      const keywords = params.ingredients.toLowerCase().split(',');
+      setScanKeywords(keywords);
+
+      // Filter and sort by match count
+      const filtered = ALL_RECIPES.map(recipe => {
+        const matches = recipe.ingredients.filter(ing => 
+          keywords.some(kw => ing.toLowerCase().includes(kw) || kw.includes(ing.toLowerCase()))
+        );
+        const matchPercentage = Math.round((matches.length / recipe.ingredients.length) * 100);
+        return { ...recipe, matchScore: matchPercentage };
+      })
+      .filter(r => r.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore);
+
+      setRecipes(filtered.length > 0 ? filtered : ALL_RECIPES);
+    }
+  }, [params.ingredients]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
@@ -56,42 +99,54 @@ export default function RecipesScreen() {
 
       <View style={[styles.searchBar, { backgroundColor: theme.secondary }]}>
         <Search size={20} color={theme.muted} />
-        <Text style={[styles.placeholder, { color: theme.muted }]}>Search recipes...</Text>
+        <Text style={[styles.placeholder, { color: theme.muted }]}>
+            {scanKeywords.length > 0 ? `Matching: ${scanKeywords.join(', ')}` : 'Search recipes...'}
+        </Text>
       </View>
 
-      <FlatList
-        data={ALL_RECIPES}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={[styles.card, { backgroundColor: theme.card }]}
-            onPress={() => router.push(`/recipe/${item.id}`)}
-          >
-            <Image source={item.image} style={styles.cardImage} />
-
-            <View style={[styles.matchBadge, { backgroundColor: theme.tint }]}>
-              <Text style={styles.matchText}>{item.match}</Text>
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={[styles.cardTitle, { color: theme.text }]}>{item.title}</Text>
-              <View style={styles.statsRow}>
-                <View style={styles.stat}>
-                  <Clock size={14} color={theme.muted} />
-                  <Text style={[styles.statText, { color: theme.muted }]}>{item.time}</Text>
+      {recipes.length === 0 ? (
+          <View style={styles.emptyState}>
+              <ChefHat size={60} color={theme.muted} />
+              <Text style={[styles.emptyText, { color: theme.text }]}>No matching recipes found</Text>
+              <TouchableOpacity onPress={() => setRecipes(ALL_RECIPES)}>
+                  <Text style={{ color: theme.tint, fontWeight: '700', marginTop: 10 }}>View all recipes</Text>
+              </TouchableOpacity>
+          </View>
+      ) : (
+          <FlatList
+            data={recipes}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            renderItem={({ item }: { item: any }) => (
+              <TouchableOpacity 
+                style={[styles.card, { backgroundColor: theme.card }]}
+                onPress={() => router.push(`/recipe/${item.id}`)}
+              >
+                <Image source={item.image} style={styles.cardImage} />
+    
+                <View style={[styles.matchBadge, { backgroundColor: theme.tint }]}>
+                  <Text style={styles.matchText}>{item.matchScore || '100'}% Match</Text>
                 </View>
-                <View style={styles.stat}>
-                  <Flame size={14} color={theme.muted} />
-                  <Text style={[styles.statText, { color: theme.muted }]}>{item.calories}</Text>
+                <View style={styles.cardInfo}>
+                  <Text style={[styles.cardTitle, { color: theme.text }]}>{item.title}</Text>
+                  <View style={styles.statsRow}>
+                    <View style={styles.stat}>
+                      <Clock size={14} color={theme.muted} />
+                      <Text style={[styles.statText, { color: theme.muted }]}>{item.time}</Text>
+                    </View>
+                    <View style={styles.stat}>
+                      <Flame size={14} color={theme.muted} />
+                      <Text style={[styles.statText, { color: theme.muted }]}>{item.calories}</Text>
+                    </View>
+                    <View style={[styles.difficultyBadge, { backgroundColor: theme.secondary }]}>
+                      <Text style={[styles.difficultyText, { color: theme.text }]}>{item.difficulty}</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={[styles.difficultyBadge, { backgroundColor: theme.secondary }]}>
-                  <Text style={[styles.difficultyText, { color: theme.text }]}>{item.difficulty}</Text>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+              </TouchableOpacity>
+            )}
+          />
+      )}
     </SafeAreaView>
   );
 }
@@ -194,5 +249,16 @@ const styles = StyleSheet.create({
   difficultyText: {
     fontSize: 11,
     fontWeight: '700',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 100,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 20,
   },
 });

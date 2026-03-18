@@ -116,7 +116,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
             <TouchableOpacity 
               style={[styles.iconButton, { backgroundColor: theme.secondary }]}
-              onPress={() => router.push('/Main/settings')}
+              onPress={() => router.push('/settings')}
             >
               <Settings size={20} color={theme.text} />
             </TouchableOpacity>
@@ -125,7 +125,13 @@ export default function HomeScreen() {
 
         {/* Title Section */}
         <View style={styles.titleSection}>
-          <Text style={[styles.mainTitle, { color: theme.text }]}>What's in your kitchen today, {userName}?</Text>
+          <Text 
+            style={[styles.mainTitle, { color: theme.text }]} 
+            numberOfLines={1} 
+            adjustsFontSizeToFit
+          >
+            What's in your kitchen today, {userName}?
+          </Text>
         </View>
 
         {/* Scan Button */}
@@ -243,9 +249,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 36,
+    lineHeight: 28,
   },
   scanButton: {
     flexDirection: 'row',

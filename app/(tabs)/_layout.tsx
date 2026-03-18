@@ -81,12 +81,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="Main/settings"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="Auth/login"
         options={{
           href: null,

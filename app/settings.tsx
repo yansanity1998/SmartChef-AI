@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { ChevronRight, User, Bell, Shield, CircleHelp, Info, LogOut, Moon, ArrowLeft } from 'lucide-react-native';

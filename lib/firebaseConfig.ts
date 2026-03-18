@@ -1,6 +1,8 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+// @ts-ignore
+import { initializeAuth, getReactNativePersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBYaecHr1dROaew2PGOZZwKkPzTHK5Ft0I",
@@ -16,9 +18,10 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize and export Auth and Firestore
-// Note: Analytics is disabled as it requires a DOM environment not present in React Native
-export const auth = getAuth(app);
+// Initialize Auth WITH AsyncStorage persistence (keeps user logged in between sessions)
+export const auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage)
+});
 export const db = getFirestore(app);
 
 export { app };
