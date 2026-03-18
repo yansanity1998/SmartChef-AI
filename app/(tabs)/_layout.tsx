@@ -3,11 +3,11 @@ import React from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import { HapticTab } from '@/components/haptic-tab';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Home, NotebookText, Camera, Heart, MessageSquare } from 'lucide-react-native';
+import { useAppTheme } from '@/hooks/use-app-theme';
+import { Home, NotebookText, Scan, Heart, MessageSquare } from 'lucide-react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useAppTheme();
   const theme = Colors[colorScheme ?? 'light'];
 
   return (
@@ -46,10 +46,10 @@ export default function TabLayout() {
           title: 'Scan',
           tabBarIcon: ({ color }) => (
             <View style={[styles.scanButton, { backgroundColor: theme.tint }]}>
-              <Camera size={26} color="white" />
+              <Scan size={28} color="white" />
             </View>
           ),
-          tabBarLabel: () => null, // Hide label for the center button
+          tabBarLabel: () => null,
         }}
       />
       <Tabs.Screen
@@ -80,17 +80,16 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   scanButton: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -20,
+    marginTop: -25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
   },
 });
-
