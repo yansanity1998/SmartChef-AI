@@ -18,7 +18,7 @@ import { Mail, Lock, ArrowRight, ChefHat, Eye, EyeOff } from 'lucide-react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth } from '@/lib/firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { LoginSchema } from '@/schemas/login.schema';
 
 const { width } = Dimensions.get('window');
@@ -37,15 +37,34 @@ export default function LoginScreen() {
     
     if (!validation.success) {
       const firstError = validation.error.issues[0].message;
-      Alert.alert('Validation Error', firstError);
+      Toast.show({
+        type: 'error',
+        text1: 'Validation Error',
+        text2: firstError,
+        position: 'top',
+        topOffset: 60,
+      });
       return;
     }
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      Toast.show({
+        type: 'success',
+        text1: 'Welcome!',
+        text2: 'Successfully signed in.',
+        position: 'top',
+        topOffset: 60,
+      });
       router.replace('/');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.message);
+      Toast.show({
+        type: 'error',
+        text1: 'Login Failed',
+        text2: error.message,
+        position: 'top',
+        topOffset: 60,
+      });
     }
   };
 

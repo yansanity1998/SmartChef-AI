@@ -7,8 +7,8 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, ArrowRight, ChefHat, Eye, EyeOff, Lock, Mail, User } from 'lucide-react-native';
 import React, { useState } from 'react';
+import Toast from 'react-native-toast-message';
 import {
-    Alert,
     Dimensions,
     ImageBackground,
     KeyboardAvoidingView,
@@ -40,7 +40,13 @@ export default function RegisterScreen() {
         
         if (!validation.success) {
             const firstError = validation.error.issues[0].message;
-            Alert.alert('Validation Error', firstError);
+            Toast.show({
+                type: 'error',
+                text1: 'Validation Error',
+                text2: firstError,
+                position: 'top',
+                topOffset: 60,
+            });
             return;
         }
 
@@ -53,7 +59,7 @@ export default function RegisterScreen() {
                 displayName: fullName
             });
 
-            // Save user profile to Firestore (SQL "Insert" equivalent)
+            // Save user profile to Firestore
             await setDoc(doc(db, "users", user.uid), {
                 uid: user.uid,
                 fullName: fullName,
@@ -61,9 +67,23 @@ export default function RegisterScreen() {
                 createdAt: new Date().toISOString(),
             });
 
+            Toast.show({
+                type: 'success',
+                text1: 'Welcome to SmartChef!',
+                text2: 'Account created successfully.',
+                position: 'top',
+                topOffset: 60,
+            });
+
             router.replace('/');
         } catch (error: any) {
-            Alert.alert('Registration Failed', error.message);
+            Toast.show({
+                type: 'error',
+                text1: 'Registration Failed',
+                text2: error.message,
+                position: 'top',
+                topOffset: 60,
+            });
         }
     };
 
