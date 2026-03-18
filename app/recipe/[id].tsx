@@ -134,7 +134,7 @@ export default function RecipeDetailScreen() {
          
          <TouchableOpacity 
           style={[styles.chatButton, { backgroundColor: theme.tint }]}
-          onPress={() => router.push('/chat')}
+          onPress={() => router.push('/Main/chat')}
          >
            <MessageCircle size={24} color="white" />
            <Text style={styles.chatButtonText}>Ask AI Assistant</Text>
