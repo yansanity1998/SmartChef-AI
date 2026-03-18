@@ -96,7 +96,10 @@ export default function SettingsScreen() {
           <SettingItem icon={Info} label="About SmartChef AI" isLast={true} />
         </Section>
 
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={() => router.replace('/Auth/login')}
+        >
           <LogOut size={20} color="#FF3B30" />
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
