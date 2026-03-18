@@ -9,16 +9,28 @@ export const unstable_settings = {
   anchor: '(tabs)',
 };
 
+import { ThemeProvider as AppThemeProvider, useAppTheme } from '@/hooks/use-app-theme';
+
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  return (
+    <AppThemeProvider>
+      <ThemeInternal />
+    </AppThemeProvider>
+  );
+}
+
+function ThemeInternal() {
+  const { colorScheme } = useAppTheme();
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+        <Stack.Screen name="recipe/[id]" options={{ headerShown: false, presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Details' }} />
       </Stack>
-      <StatusBar style="auto" />
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
     </ThemeProvider>
   );
 }
+
