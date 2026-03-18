@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { auth } from '@/lib/firebaseConfig';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Alert } from 'react-native';
+import { LoginSchema } from '@/schemas/login.schema';
 
 const { width } = Dimensions.get('window');
 
@@ -31,8 +32,12 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    // 1. Validate against schema
+    const validation = LoginSchema.safeParse({ email, password });
+    
+    if (!validation.success) {
+      const firstError = validation.error.issues[0].message;
+      Alert.alert('Validation Error', firstError);
       return;
     }
 
@@ -51,7 +56,7 @@ export default function LoginScreen() {
         style={styles.backgroundImage}
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']}
+          colors={['rgba(0,0,0,0.4)', 'rgba(0,0,0,0.9)']}
           style={styles.gradient}
         >
           <SafeAreaView style={styles.safeArea}>
@@ -126,6 +131,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
   backgroundImage: {
     flex: 1,

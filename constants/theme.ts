@@ -6,7 +6,7 @@
 import { Platform } from 'react-native';
 
 const tintColorLight = '#FF9500'; // SmartChef Orange
-const tintColorDark = '#fff';
+const tintColorDark = '#FF9500'; // Keep orange in dark mode for brand consistency and visibility
 
 export const Colors = {
   light: {
