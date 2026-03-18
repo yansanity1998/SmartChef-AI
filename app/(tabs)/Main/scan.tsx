@@ -4,8 +4,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Colors } from '@/constants/theme';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { X, Zap, Image as ImageIcon, RotateCw, Scan, Circle, ArrowRight, ChefHat } from 'lucide-react-native';
-import { ActivityIndicator } from 'react-native';
+import { X, Zap, Image as ImageIcon, RotateCw, Scan, Circle, ArrowRight, ChefHat, BookOpen, Clock, Users } from 'lucide-react-native';
+import { ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
@@ -28,10 +28,11 @@ import Toast from 'react-native-toast-message';
 
 // Gemini Vision API Configuration
 const GEMINI_API_KEY = "AIzaSyCLVAlJX1dkmQq3408Saa3NGUMgfkWiX_w";
-// Models available in 2026: Try Flash 3.1, 2.0, and 1.5 versions
-const MODELS = ["gemini-3.1-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash-latest"];
+// Retry multiple models for 2026 compatibility
+const MODELS = ["gemini-3.1-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"];
 const GEMINI_URL = (modelName: string) => `https://generativelanguage.googleapis.com/v1/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
 const OPEN_FOOD_FACTS_URL = (barcode: string) => `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`;
+const THE_MEAL_DB_URL = (ingredient: string) => `https://www.themealdb.com/api/json/v1/1/filter.php?i=${ingredient}`;
 
 const INGREDIENT_POOL = [
     'Tomato', 'Onion', 'Garlic', 'Basil', 'Olive Oil',
@@ -57,6 +58,9 @@ export default function ScanScreen() {
         barcode?: string 
     }[]>([]);
     const [recommendedDish, setRecommendedDish] = useState<string | null>(null);
+    const [aiRecipe, setAiRecipe] = useState<{ title: string, time: string, servings: string, instructions: string[], ingredients: string[] } | null>(null);
+    const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+    const [showRecipeModal, setShowRecipeModal] = useState(false);
     const cameraRef = useRef<any>(null);
 
     // Scanner animation
@@ -78,61 +82,65 @@ export default function ScanScreen() {
         if (isScanning || isSaved || !cameraRef.current) return;
         setIsScanning(true);
         setDetectedIngredients([]);
+        setRecommendedDish(null);
 
         try {
-            console.log("--- STARTING VISION SCAN ---");
+            console.log("--- STARTING SDK VISION SCAN ---");
             const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
             if (!photo) throw new Error("Capture failed");
 
+            // Convert to base64 for Gemini
             const manipulated = await ImageManipulator.manipulateAsync(
                 photo.uri,
                 [{ resize: { width: 640 } }],
                 { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true }
             );
 
-            // Try different models until one works (fixes 404 issues in 2026)
-            let aiRawText = "";
-            for (const modelName of MODELS) {
+            if (!manipulated.base64) throw new Error("Could not process image");
+
+            const visionPrompt = "Identify ingredients in this food image AND suggest ONE dish. Return JSON: {\"ingredients\": [\"string\"], \"recommendedDish\": \"string\"}.";
+            let rawText = "";
+            for (const model of MODELS) {
                 try {
-                    console.log(`Trying model: ${modelName}...`);
-                    const response = await axios.post(GEMINI_URL(modelName), {
-                        contents: [{ parts: [
-                            { text: "List ingredients in this food image AND suggest ONE specific dish that could be made with them. Return ONLY a JSON object with this structure: {\"ingredients\": [\"Tomato\", \"Onion\"], \"recommendedDish\": \"Classic Marinara Sauce\"}. If no food is found, return {\"ingredients\": [], \"recommendedDish\": null}." },
-                            { inlineData: { mimeType: "image/jpeg", data: manipulated.base64 } }
-                        ]}]
+                    const response = await axios.post(GEMINI_URL(model), {
+                        contents: [{ parts: [{ text: visionPrompt }, { inlineData: { mimeType: "image/jpeg", data: manipulated.base64 } }]}]
                     }, { timeout: 15000 });
-                    
-                    aiRawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (aiRawText) break; 
-                } catch (e: any) {
-                    const status = e.response?.status;
-                    const errorMsg = e.response?.data?.error?.message || e.message;
-                    console.warn(`Model ${modelName} failed (${status}): ${errorMsg}`);
-                    continue; 
-                }
+                    rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (rawText) break;
+                } catch (e) { console.warn("Model failed", model); }
             }
+            if (!rawText) throw new Error("Models failed");
+            const data = JSON.parse(rawText.match(/\{.*\}/s)?.[0] || rawText);
+            const ingredientNames: string[] = data.ingredients || [];
+            const dish: string = data.recommendedDish || "Something Delicious!";
 
-            if (aiRawText) {
-                const jsonMatch = aiRawText.match(/\{.*\}/s);
-                const data = JSON.parse((jsonMatch ? jsonMatch[0] : aiRawText).replace(/```json|```/g, "").trim());
-                const ingredientNames: string[] = data.ingredients || [];
-                const dish: string = data.recommendedDish || "Something Delicious!";
+            if (ingredientNames.length > 0) {
+                setDetectedIngredients(ingredientNames.map(name => ({
+                    name: name.charAt(0).toUpperCase() + name.slice(1),
+                    confidence: "AI Vision (Gemini)",
+                    x: (Math.random() * (width - 180)) + 40,
+                    y: (Math.random() * (height * 0.2)) + 150,
+                    timestamp: new Date().toISOString()
+                })));
 
-                if (ingredientNames.length > 0) {
-                    setDetectedIngredients(ingredientNames.map(name => ({
-                        name: name.charAt(0).toUpperCase() + name.slice(1),
-                        confidence: "AI Vision (Gemini)",
-                        x: (Math.random() * (width - 180)) + 40,
-                        y: (Math.random() * (height * 0.2)) + 150,
-                        timestamp: new Date().toISOString()
-                    })));
+                // Try to find a real dish from TheMealDB API for better quality
+                try {
+                    const primaryIng = ingredientNames[0];
+                    console.log(`Fetching recipe from TheMealDB for: ${primaryIng}...`);
+                    const mealRes = await axios.get(THE_MEAL_DB_URL(primaryIng.toLowerCase()));
+                    const realMeal = mealRes.data?.meals?.[0]?.strMeal;
+                    setRecommendedDish(realMeal || dish); // Fallback to AI suggest if API fails
+                } catch (e) {
                     setRecommendedDish(dish);
-                    setIsSaved(false); // allow save after new detection
                 }
+            } else {
+                Toast.show({ type: 'info', text1: 'Scanner', text2: 'No ingredients found' });
             }
+
+            setIsSaved(false); // allow save after detection
         } catch (error: any) {
-            console.error("Vision Scan Error:", error.message);
-            Toast.show({ type: 'error', text1: 'Vision Error', text2: 'Models are unavailable, try Barcode mode' });
+            console.error("SDK Vision error:", error.message);
+            Toast.show({ type: 'error', text1: 'AI Scan Error', text2: 'Please try again or use Barcode mode' });
         } finally {
             setIsScanning(false);
         }
@@ -166,6 +174,16 @@ export default function ScanScreen() {
                 })));
                 setIsSaved(false); // Unlock saving for this new detection
 
+                // IMPORTANT: Fetch recipe suggestion so the button becomes functional
+                try {
+                    const primaryIng = ingredients[0];
+                    const mealRes = await axios.get(THE_MEAL_DB_URL(primaryIng.toLowerCase()));
+                    const realMeal = mealRes.data?.meals?.[0]?.strMeal;
+                    setRecommendedDish(realMeal || `A dish with ${primaryIng}`);
+                } catch (e) {
+                    setRecommendedDish(`A dish with ${ingredients[0]}`);
+                }
+ 
                 Toast.show({ type: 'success', text1: 'Product Found', text2: baseName });
             } else {
                 Toast.show({ type: 'info', text1: 'Scanner', text2: 'Barcode not in our database' });
@@ -255,6 +273,69 @@ export default function ScanScreen() {
         } else {
             Alert.alert('Save Failed', error.message || 'Could not connect to database. Check your internet connection.');
         }
+    }
+  };
+
+  const handleQuickRecipe = async () => {
+    const user = auth.currentUser;
+    if (!user) {
+        Alert.alert('Not Logged In', 'Please login to save your scan.');
+        return;
+    }
+
+    if (!recommendedDish) return;
+    
+    setIsGeneratingRecipe(true);
+    setShowRecipeModal(true); // Open modal with skeleton/loader
+
+    try {
+        const names = detectedIngredients.map(i => i.name);
+        const recipePrompt = `Create a step-by-step recipe for "${recommendedDish}" using primarily these ingredients: ${names.join(', ')}. 
+        Return JSON object ONLY: 
+        {
+          "title": "string",
+          "time": "e.g. 20 mins",
+          "servings": "string",
+          "ingredients": ["string"],
+          "instructions": ["string"]
+        }`;
+
+        console.log(`--- FETCHING RECIPE FOR: ${recommendedDish} ---`);
+        let recipeRawText = "";
+        for (const model of MODELS) {
+            try {
+                console.log(`Trying Recipe model: ${model}...`);
+                const response = await axios.post(GEMINI_URL(model), {
+                    contents: [{ parts: [{ text: recipePrompt }]}]
+                }, { timeout: 15000 });
+                recipeRawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (recipeRawText) break;
+            } catch (e) {
+                console.warn(`Recipe model ${model} failed...`);
+            }
+        }
+
+        if (!recipeRawText) throw new Error("No available models found for recipe");
+        
+        const jsonStr = recipeRawText.match(/\{.*\}/s)?.[0] || recipeRawText;
+        const recipe = JSON.parse(jsonStr.trim());
+        setAiRecipe(recipe);
+
+        // Silent save to Firebase
+        await addDoc(collection(db, 'scans'), {
+            userId: user.uid,
+            scanType: scanMode,
+            ingredients: names,
+            suggestedDish: recommendedDish,
+            fullAiRecipe: recipe,
+            createdAt: serverTimestamp(),
+        });
+        setIsSaved(true);
+    } catch (e: any) {
+        console.error("Recipe generation failed:", e);
+        Alert.alert("Recipe Error", "Could not generate instructions. Please try again.");
+    } finally {
+        setIsGeneratingRecipe(false);
     }
   };
 
@@ -394,15 +475,93 @@ export default function ScanScreen() {
                 <Animated.View entering={FadeInUp} style={styles.suggestionContainer}>
                     <TouchableOpacity 
                         style={[styles.suggestionButton, { backgroundColor: theme.tint }]}
-                        onPress={saveScanSession}
+                        onPress={handleQuickRecipe}
+                        disabled={isGeneratingRecipe}
                     >
-                        <ChefHat size={20} color="white" />
-                        <Text style={styles.suggestionText}>
-                            {recommendedDish ? `Cook ${recommendedDish}?` : "What should I cook?"}
-                        </Text>
+                        {isGeneratingRecipe ? (
+                            <ActivityIndicator color="white" />
+                        ) : (
+                            <>
+                                <ChefHat size={20} color="white" />
+                                <Text style={styles.suggestionText}>
+                                    {recommendedDish ? `Cook ${recommendedDish}?` : "What should I cook?"}
+                                </Text>
+                            </>
+                        )}
                     </TouchableOpacity>
                 </Animated.View>
             )}
+
+            {/* AI Recipe Modal */}
+            <Modal
+                visible={showRecipeModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowRecipeModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+                        <View style={styles.modalHeader}>
+                            <Text style={[styles.modalTitle, { color: theme.text }]}>Chef's Instructions</Text>
+                            <TouchableOpacity onPress={() => setShowRecipeModal(false)} style={styles.closeModalButton}>
+                                <X size={24} color={theme.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {isGeneratingRecipe ? (
+                            <View style={styles.recipeLoader}>
+                                <ActivityIndicator size="large" color={theme.tint} />
+                                <Text style={[styles.loaderText, { color: theme.muted }]}>Cooking up the perfect instructions...</Text>
+                            </View>
+                        ) : aiRecipe ? (
+                            <ScrollView showsVerticalScrollIndicator={false}>
+                                <Text style={[styles.recipeTitle, { color: theme.tint }]}>{aiRecipe.title}</Text>
+                                
+                                <View style={styles.recipeMetaRow}>
+                                    <View style={styles.metaItem}>
+                                        <Clock size={16} color={theme.muted} />
+                                        <Text style={[styles.metaText, { color: theme.muted }]}>{aiRecipe.time}</Text>
+                                    </View>
+                                    <View style={styles.metaItem}>
+                                        <Users size={16} color={theme.muted} />
+                                        <Text style={[styles.metaText, { color: theme.muted }]}>{aiRecipe.servings}</Text>
+                                    </View>
+                                </View>
+
+                                <View style={styles.recipeSection}>
+                                    <Text style={[styles.sectionHeading, { color: theme.text }]}>Ingredients Needed</Text>
+                                    {aiRecipe.ingredients.map((ing, i) => (
+                                        <View key={i} style={styles.ingredientItem}>
+                                            <View style={[styles.checkbox, { borderColor: theme.tint }]} />
+                                            <Text style={[styles.ingredientText, { color: theme.text }]}>{ing}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <View style={styles.recipeSection}>
+                                    <Text style={[styles.sectionHeading, { color: theme.text }]}>Step-by-Step Instructions</Text>
+                                    {aiRecipe.instructions.map((step, i) => (
+                                        <View key={i} style={styles.stepItem}>
+                                            <View style={[styles.stepNumber, { backgroundColor: theme.tint }]}>
+                                                <Text style={styles.stepNumberText}>{i + 1}</Text>
+                                            </View>
+                                            <Text style={[styles.stepText, { color: theme.text }]}>{step}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+
+                                <TouchableOpacity 
+                                    style={[styles.startCookingButton, { backgroundColor: theme.tint }]}
+                                    onPress={() => setShowRecipeModal(false)}
+                                >
+                                    <ChefHat size={20} color="white" />
+                                    <Text style={styles.startCookingText}>I'm ready to cook!</Text>
+                                </TouchableOpacity>
+                            </ScrollView>
+                        ) : null}
+                    </View>
+                </View>
+            </Modal>
           </View>
         </SafeAreaView>
       </CameraView>
@@ -644,6 +803,124 @@ const styles = StyleSheet.create({
   permissionButtonText: {
     color: 'white',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    height: height * 0.85,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  closeModalButton: {
+    padding: 4,
+  },
+  recipeLoader: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 15,
+  },
+  loaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  recipeTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  recipeMetaRow: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 30,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  recipeSection: {
+    marginBottom: 30,
+  },
+  sectionHeading: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 15,
+  },
+  ingredientItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+  },
+  ingredientText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  stepItem: {
+    flexDirection: 'row',
+    gap: 15,
+    marginBottom: 20,
+  },
+  stepNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepNumberText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  startCookingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 60,
+    borderRadius: 20,
+    gap: 12,
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  startCookingText: {
+    color: 'white',
+    fontSize: 18,
     fontWeight: '700',
   },
 });
